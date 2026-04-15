@@ -1,0 +1,19 @@
+# --- Núcleo de FastAPI y Validación ---
+fastapi>=0.110.0
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+
+# --- Servidor y Protocolos ---
+uvicorn[standard]>=0.30.0
+
+# --- Cliente HTTP y Utilidades ---
+# httpx es clave aquí si ms-analytics necesita pedirle datos a ms-ingestion
+httpx>=0.27.0
+python-dotenv>=1.0.1
+
+# --- Base de Datos ---
+sqlalchemy>=2.0.29
+psycopg2-binary>=2.9.9
+
+# --- Pruebas ---
+pytest>=8.2.0
