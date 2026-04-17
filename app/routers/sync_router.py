@@ -13,6 +13,10 @@ from app.schemas.sync import SyncPayloadSchema
 
 router=APIRouter()
 
+@router.get("/health", tags=["Sistema"])
+def health():
+    return {"status": "ok", "service": "ms-ANALYTICS"}
+
 @router.post("/internal/sync/{dataset_id}")
 async def sync_data(
         dataset_id: str,

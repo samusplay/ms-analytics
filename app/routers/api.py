@@ -9,5 +9,6 @@ api_router=APIRouter()
 
 api_router.include_router(
     sync_router.router, 
+    prefix="/api/v1/analytics",
     tags=["Internal Pipeline"]
 )
