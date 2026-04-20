@@ -40,3 +40,24 @@ class PostgresAnalyticsRepository(IAnalyticsRepository):
             self.db.rollback()
             print(f"Error fatal guardando en db_analytics: {e}")
             return False
+        
+    async def get_territorial_data(self, dataset_id: str) -> List[Dict[str, Any]]:
+        try:
+            #consulta a sql
+            db_records = (
+                self.db.query(TerritorialDataModel)
+                .filter(TerritorialDataModel.dataset_id == dataset_id)
+                .all()
+            )
+            #mapeo de objetos 
+            result=[]
+            for record in db_records:
+                result.append({
+                    "zone_code": record.zone_code,
+                    "zone_name": record.zone_name,
+                    #extraemos estartegias
+                })
+            return result
+        except Exception as e:
+            print(f"Error consultando db_analytics para el dataset {dataset_id}: {e}")
+            return[]
