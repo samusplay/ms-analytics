@@ -37,9 +37,9 @@ app = FastAPI(
 )
 
 #eSto incluye el archivo del router para no estar escribiendo rutas
-app.include_router(api_router)
+app.include_router(api_router,prefix="/api/v1/analytics")
 
 
-@app.get("/health", tags=["Sistema"])
+@app.get("/api/v1/analytics/health", tags=["Sistema"])
 def health():
     return {"status": "ok", "service": "ms-ANALYTICS"}

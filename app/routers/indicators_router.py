@@ -28,9 +28,10 @@ def get_indicators_service(db: Session = Depends(get_db)) -> CalculateIndicators
     }
     
     return CalculateIndicatorsService(repository=repository, strategies=estrategias_kpi)
-
-@router.get("/api/v1/analytics/indicators/{dataset_id}")
+#Endpoint de inddicadores (no modificar)
+@router.get("/indicators/{dataset_id}")
 async def get_indicators(
+
     dataset_id: str,
     service: CalculateIndicatorsService = Depends(get_indicators_service)
 ):
@@ -41,3 +42,4 @@ async def get_indicators(
     except Exception as e:
         print(f"Error calculando indicadores para {dataset_id}: {e}")
         raise HTTPException(status_code=500, detail="Error interno calculando indicadores")
+    
