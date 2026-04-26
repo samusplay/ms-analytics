@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from app.infrastructure.repository.repository import PostgresAnalyticsRepository
 from sqlalchemy.orm import Session
 
 from app.application.services.calculate_indicators_service import (
