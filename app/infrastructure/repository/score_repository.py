@@ -88,5 +88,17 @@ class PostgresScoreRepository(IScoreRepository):
             .first()
         )
 
+#Guardar en la db
     def commit(self) -> None:
         self.db.commit()
+    
+    def get_last_execution_by_dataset(
+    self,
+    dataset_id: str,
+      ) -> ScoreExecution:
+        return (
+        self.db.query(ScoreExecution)
+        .filter(ScoreExecution.dataset_id == dataset_id)
+        .order_by(ScoreExecution.executed_at.desc())
+        .first()
+    )

@@ -50,3 +50,10 @@ class IScoreRepository(ABC):
     @abstractmethod
     def commit(self) -> None:
         pass
+
+    @abstractmethod
+    def get_last_execution_by_dataset(
+    self,
+    dataset_id: str,
+    ) -> Any:
+        pass

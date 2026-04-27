@@ -103,3 +103,35 @@ def get_trace(
         "weights": trace.weights,
         "formula": trace.formula,
     }
+
+# CA1 ranking — último resultado por dataset
+@router.get("/ranking/{dataset_id}")
+def get_ranking(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+):
+    repo = PostgresScoreRepository(db)
+    execution = repo.get_last_execution_by_dataset(dataset_id)
+
+    if not execution:
+        raise HTTPException(
+            status_code=404,
+            detail="No hay scoring calculado para este dataset"
+        )
+
+    results = repo.get_results(execution.id)
+
+    return {
+        "success": True,
+        "dataset_id": dataset_id,
+        "execution_id": execution.id,
+        "executed_at": execution.executed_at,
+        "zones": [
+            {
+                "zone_code": r.zone_code,
+                "score": r.score_value,
+                "rank": r.rank_position,
+            }
+            for r in results
+        ],
+    }
