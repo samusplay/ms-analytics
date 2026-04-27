@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.routers import indicators_router, sync_config, sync_router
+from app.routers import indicators_router, scoring_router, sync_config, sync_router
 
 #enrutador
 api_router=APIRouter()
@@ -22,4 +22,9 @@ api_router.include_router(
 api_router.include_router(
     sync_config.router,
     tags=["Pipeline Configuration"]
+)
+
+api_router.include_router(
+    scoring_router.router,
+    tags=["Scoring Territorial"]
 )
