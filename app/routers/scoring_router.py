@@ -108,6 +108,7 @@ def get_trace(
 @router.get("/ranking/{dataset_id}")
 def get_ranking(
     dataset_id: str,
+    limit:int = 10,
     db: Session = Depends(get_db),
 ):
     repo = PostgresScoreRepository(db)
@@ -132,6 +133,6 @@ def get_ranking(
                 "score": r.score_value,
                 "rank": r.rank_position,
             }
-            for r in results
+            for r in results[:limit]
         ],
     }
