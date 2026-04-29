@@ -1,8 +1,11 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.application.services.scoring_service import ScoringService
+from app.domain.repository.audit_client_port import AuditClientPort
 from app.infrastructure.config_http_client import ConfigHttpClient
+from app.infrastructure.audit_client_impl import AuditClientImpl
 from app.infrastructure.database import get_db
 from app.infrastructure.repository.score_repository import PostgresScoreRepository
 from app.schemas.scoring import ScoringRequestSchema
@@ -10,11 +13,20 @@ from app.schemas.scoring import ScoringRequestSchema
 router = APIRouter()
 
 
-def get_scoring_service(db: Session = Depends(get_db)) -> ScoringService:
+def get_audit_client() -> AuditClientPort:
+    """Fábrica para el cliente de auditoría"""
+    return AuditClientImpl()
+
+
+def get_scoring_service(
+    db: Session = Depends(get_db),
+    audit_client: AuditClientPort = Depends(get_audit_client)
+) -> ScoringService:
     """Fábrica de dependencias — ensambla las capas"""
     return ScoringService(
         score_repository=PostgresScoreRepository(db),
         config_client=ConfigHttpClient(),
+        audit_client=audit_client,
     )
 
 
@@ -25,6 +37,7 @@ async def execute_scoring(
     request: ScoringRequestSchema,
     service: ScoringService = Depends(get_scoring_service),
 ):
+    trace_id = str(uuid.uuid4())
     try:
         zones_data = [zone.model_dump() for zone in request.data]
 
@@ -37,6 +50,7 @@ async def execute_scoring(
         result = service.execute(
             dataset_id=dataset_id,
             zones_data=zones_data,
+            trace_id=trace_id,
         )
         return {"success": True, "data": result, "error": None}
 
