@@ -3,7 +3,12 @@ from typing import Any, Dict, List
 from sqlalchemy.orm import Session
 
 from app.domain.repository.score_repository_interface import IScoreRepository
-from app.infrastructure.models import ScoreExecution, Trace, ZoneScore
+from app.infrastructure.models import (
+    ScoreExecution,
+    TerritorialDataModel,
+    Trace,
+    ZoneScore,
+)
 
 
 class PostgresScoreRepository(IScoreRepository):
@@ -88,17 +93,43 @@ class PostgresScoreRepository(IScoreRepository):
             .first()
         )
 
-#Guardar en la db
+    # Guardar en la db
     def commit(self) -> None:
         self.db.commit()
     
     def get_last_execution_by_dataset(
-    self,
-    dataset_id: str,
-      ) -> ScoreExecution:
+        self,
+        dataset_id: str,
+    ) -> ScoreExecution:
         return (
-        self.db.query(ScoreExecution)
-        .filter(ScoreExecution.dataset_id == dataset_id)
-        .order_by(ScoreExecution.executed_at.desc())
-        .first()
-    )
+            self.db.query(ScoreExecution)
+            .filter(ScoreExecution.dataset_id == dataset_id)
+            .order_by(ScoreExecution.executed_at.desc())
+            .first()
+        )
+
+    def get_results_with_names(
+        self,
+        execution_id: int,
+    ) -> List[dict]:
+        
+        zone_scores = (
+            self.db.query(ZoneScore)
+            .filter(ZoneScore.execution_id == execution_id)
+            .order_by(ZoneScore.rank_position)
+            .all()
+        )
+        results = []
+        for zs in zone_scores:
+            territorial = (
+                self.db.query(TerritorialDataModel)
+                .filter(TerritorialDataModel.zone_code == zs.zone_code)
+                .first()
+            )
+            results.append({
+                "zone_code": zs.zone_code,
+                "zone_name": territorial.zone_name if territorial else zs.zone_code,
+                "score": zs.score_value,
+                "rank": zs.rank_position,
+            })
+        return results

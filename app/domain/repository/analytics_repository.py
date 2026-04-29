@@ -15,3 +15,15 @@ class IAnalyticsRepository(ABC):
     @abstractmethod
     async def get_territorial_data(self, dataset_id: str) -> List[Dict[str, Any]]:
         pass
+
+    #Metodo par trarse toda la info
+    @abstractmethod
+    async def get_territorial_data_with_metrics(
+    self, dataset_id: str
+    ) -> List[Dict[str, Any]]:
+      pass
+    #Traerse Resultados con el nombre
+    @abstractmethod
+    def get_results_with_names(self, execution_id: int) -> List[Dict[str, Any]]:
+        """Contrato para obtener resultados cruzados con los nombres de las zonas"""
+        pass

@@ -57,3 +57,12 @@ class IScoreRepository(ABC):
     dataset_id: str,
     ) -> Any:
         pass
+
+    @abstractmethod
+    def get_results_with_names(
+    self,
+    execution_id: int,
+    ) -> List[dict]:
+        pass
+
+    
