@@ -11,18 +11,17 @@ class AnalyticsService:
 
     async def fetch_zone_data(self, zone_codes: List[str]) -> List[Dict[str, Any]]:
         """
-        Consulta ms-transform para obtener la data cruda transformada (zone_analytics)
+        Consulta ms-transform para obtener las métricas reales de las zonas solicitadas.
+        Usa el endpoint /zones/metrics?names=ZONA1,ZONA2
         """
-        url = f"{MS_TRANSFORM_URL}/api/v1/transform/zones"
+        names_param = ",".join(zone_codes)
+        url = f"{MS_TRANSFORM_URL}/api/v1/transform/zones/metrics?names={names_param}"
         async with httpx.AsyncClient(timeout=15.0) as client:
             try:
                 response = await client.get(url)
                 response.raise_for_status()
                 data = response.json()
-                all_zones = data.get("data", {}).get("zones", [])
-                
-                filtered_zones = [z for z in all_zones if z.get("zone_code") in zone_codes]
-                return filtered_zones
+                return data.get("data", {}).get("zones", [])
                 
             except Exception as e:
                 print(f"Error comunicando con ms-transform: {e}")
@@ -53,22 +52,23 @@ class AnalyticsService:
         results = []
         for zone in zones_data:
             metrics = zone.get("metrics", {})
-            ingresos = float(metrics.get("INGRESOS", 10000))
-            poblacion = float(metrics.get("POBLACION", 5000))
-            competencia = float(metrics.get("COMPETENCIA", 10))
+            ingresos = float(metrics.get("INGRESOS", 10000)) if metrics else 10000
+            poblacion = float(metrics.get("POBLACION", 5000)) if metrics else 5000
+            competencia = float(metrics.get("COMPETENCIA", 10)) if metrics else 10
             
-            zone_code = zone.get("zone_code")
+            # ms-transform devuelve {"name": "VALLE", "record_count": 5}
+            zone_name = zone.get("name", "Zona desconocida")
             
-            # Usamos el Score de la Base de Datos. Si la BD está vacía (mock temporal), lo calculamos:
-            if zone_code in real_scores:
-                score_final = real_scores[zone_code]
+            # Usamos el Score de la Base de Datos. Si la BD está vacía, lo calculamos:
+            if zone_name in real_scores:
+                score_final = real_scores[zone_name]
             else:
                 score_final = (ingresos * 0.05) + (poblacion * 0.03) - (competencia * 2)
                 score_final = max(0, min(100, score_final / 100))
             
             results.append({
-                "zone_code": zone_code,
-                "zone_name": zone.get("zone_name"),
+                "zone_code": zone_name,   # usamos name como identificador
+                "zone_name": zone_name,
                 "ingresos": ingresos,
                 "poblacion": poblacion,
                 "competencia": competencia,
