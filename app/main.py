@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import scoring_router
+from app.routers.analytics_router import analytics_router
 from app.database import engine, Base
 
 # Crear tablas SOLO si no existen
@@ -26,6 +27,7 @@ app.add_middleware(
 )
 
 app.include_router(scoring_router.router)
+app.include_router(analytics_router)
 
 @app.get("/")
 async def root():
