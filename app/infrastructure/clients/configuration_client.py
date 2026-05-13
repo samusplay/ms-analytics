@@ -1,21 +1,18 @@
-import requests
+import httpx
 
-CONFIG_SERVICE_URL = "http://127.0.0.1:8004/api/v1/profiles/"
 
 def get_active_profile():
+
+    url = "http://ms-configuration:8000/api/v1/configuration/profiles/active"
+
     try:
-        response = requests.get(CONFIG_SERVICE_URL)
-        response.raise_for_status()
-        profiles = response.json()
+        response = httpx.get(url)
 
-        # 👉 Buscar el activo
-        active_profile = next((p for p in profiles if p.get("is_active")), None)
+        if response.status_code == 200:
+            return response.json()
 
-        if not active_profile:
-            raise Exception("No hay perfil activo")
-
-        return active_profile
+        return None
 
     except Exception as e:
-        print(f"Error obteniendo configuración: {e}")
+        print(f"Error conectando con ms-configuration: {e}")
         return None
