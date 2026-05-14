@@ -40,7 +40,7 @@ def test_analysis():
 # ENDPOINT PARA ML
 # ==========================
 @router.get("/zones/metrics/{dataset_id}")
-async def get_zone_metrics(dataset_id: int):
+async def get_zone_metrics(dataset_id: str):
 
     return [
         {
@@ -58,3 +58,38 @@ async def get_zone_metrics(dataset_id: int):
             "competencia": 300
         }
     ]
+
+@router.get("/indicators/{dataset_id}")
+async def get_indicators(dataset_id: str):
+    """
+    Endpoint que devuelve los indicadores clave (KPIs) del dataset.
+    Por ahora devuelve datos simulados para cumplir con el esquema del frontend.
+    """
+    return {
+        "volumen_total": 2500,
+        "cobertura_territorial": 85.5,
+        "zona_top": "ZONA-NORTE",
+        "densidad_promedio": 12.4
+    }
+
+@router.get("/ranking/{dataset_id}")
+async def get_ranking(dataset_id: str):
+    """
+    Endpoint que devuelve el ranking de zonas.
+    Por ahora devuelve datos simulados.
+    """
+    return {
+        "execution_id": 1,
+        "zones": [
+            {
+                "zone_name": "ZONA-1",
+                "score": 95.5,
+                "potential": "ALTO"
+            },
+            {
+                "zone_name": "ZONA-2",
+                "score": 82.3,
+                "potential": "MEDIO"
+            }
+        ]
+    }
