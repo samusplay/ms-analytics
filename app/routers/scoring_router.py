@@ -7,6 +7,9 @@ from app.domain.repository.audit_client_port import AuditClientPort
 from app.infrastructure.config_http_client import ConfigHttpClient
 from app.infrastructure.audit_client_impl import AuditClientImpl
 from app.infrastructure.database import get_db
+from app.infrastructure.repository.postgres_analytics_repository import (
+    PostgresAnalyticsRepository,
+)
 from app.infrastructure.repository.score_repository import PostgresScoreRepository
 from app.schemas.scoring import ScoringRequestSchema
 
@@ -120,10 +123,7 @@ def get_trace(
 
 # CA1 ranking — último resultado por dataset
 @router.get("/ranking/{dataset_id}")
-def get_ranking(
-    dataset_id: str,
-    db: Session = Depends(get_db),
-):
+def get_ranking(dataset_id: str, db: Session = Depends(get_db)):
     repo = PostgresScoreRepository(db)
     execution = repo.get_last_execution_by_dataset(dataset_id)
 
@@ -133,19 +133,33 @@ def get_ranking(
             detail="No hay scoring calculado para este dataset"
         )
 
-    results = repo.get_results(execution.id)
+    results = repo.get_results_with_names(execution.id)  # ← cambiar esto
 
     return {
         "success": True,
         "dataset_id": dataset_id,
         "execution_id": execution.id,
         "executed_at": execution.executed_at,
-        "zones": [
-            {
-                "zone_code": r.zone_code,
-                "score": r.score_value,
-                "rank": r.rank_position,
-            }
-            for r in results
-        ],
+        "zones": results,  # ← ya viene con zone_name
     }
+
+#Datos territorailes para alimentar el scoring
+@router.get("/zones/metrics/{dataset_id}")
+async def get_zones_with_metrics(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+):
+    try:
+        repository = PostgresAnalyticsRepository(db)
+        data = await repository.get_territorial_data_with_metrics(dataset_id)
+        if not data:
+            raise HTTPException(
+                status_code=404,
+                detail="No hay datos territoriales para este dataset"
+            )
+        return {"success": True, "data": data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error obteniendo métricas: {e}")
+        raise HTTPException(status_code=500, detail="Error interno")
