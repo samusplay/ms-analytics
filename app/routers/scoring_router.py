@@ -1,5 +1,6 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+import asyncio
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 
 from app.application.services.scoring_service import ScoringService
@@ -39,8 +40,9 @@ async def execute_scoring(
     dataset_id: str,
     request: ScoringRequestSchema,
     service: ScoringService = Depends(get_scoring_service),
+    x_trace_id: str = Header(None, alias="X-Trace-Id")
 ):
-    trace_id = str(uuid.uuid4())
+    trace_id = x_trace_id or str(uuid.uuid4())
     try:
         zones_data = [zone.model_dump() for zone in request.data]
 
@@ -123,7 +125,13 @@ def get_trace(
 
 # CA1 ranking — último resultado por dataset
 @router.get("/ranking/{dataset_id}")
-def get_ranking(dataset_id: str, db: Session = Depends(get_db)):
+def get_ranking(
+    dataset_id: str, 
+    db: Session = Depends(get_db),
+    x_trace_id: str = Header(None, alias="X-Trace-Id"),
+    audit_client: AuditClientPort = Depends(get_audit_client)
+):
+    trace_id = x_trace_id or str(uuid.uuid4())
     repo = PostgresScoreRepository(db)
     execution = repo.get_last_execution_by_dataset(dataset_id)
 
@@ -134,6 +142,15 @@ def get_ranking(dataset_id: str, db: Session = Depends(get_db)):
         )
 
     results = repo.get_results_with_names(execution.id)  # ← cambiar esto
+
+    if audit_client:
+        asyncio.create_task(
+            audit_client.send_calculation_event(
+                trace_id=trace_id,
+                estado="SUCCESS",
+                summary=f"Generación de ranking territorial consultada para el dataset {dataset_id}"
+            )
+        )
 
     return {
         "success": True,

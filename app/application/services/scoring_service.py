@@ -89,11 +89,10 @@ class ScoringService:
 
         if self.audit_client and trace_id:
             asyncio.create_task(
-                self.audit_client.send_event(
-                    event_type="SCORING_COMPLETED",
-                    reference_id=str(dataset_id),
-                    summary=f"Scoring exitoso para el dataset {dataset_id}. {len(scored)} zonas analizadas.",
-                    trace_id=trace_id
+                self.audit_client.send_calculation_event(
+                    trace_id=trace_id,
+                    estado="SUCCESS",
+                    summary=f"Construcción de score generada para el dataset {dataset_id}. {len(scored)} zonas analizadas."
                 )
             )
 
