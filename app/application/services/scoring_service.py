@@ -1,8 +1,10 @@
+import asyncio
 from typing import Any, Dict, List
 
 from app.application.calculator import WeightedScoringCalculator
 from app.domain.repository.score_repository_interface import IScoreRepository
 from app.infrastructure.config_http_client import ConfigHttpClient
+from app.domain.repository.audit_client_port import AuditClientPort
 
 
 class ScoringService:
@@ -15,15 +17,18 @@ class ScoringService:
         self,
         score_repository: IScoreRepository,
         config_client: ConfigHttpClient,
+        audit_client: AuditClientPort = None,
     ):
         self.score_repository = score_repository
         self.config_client = config_client
+        self.audit_client = audit_client
         self.calculator = WeightedScoringCalculator()
 
     def execute(
         self,
         dataset_id: str,
         zones_data: List[Dict[str, Any]],
+        trace_id: str = None,
     ) -> Dict[str, Any]:
 
         # CA1 — Obtener pesos activos desde ms-configuration
@@ -81,6 +86,15 @@ class ScoringService:
 
         # Persistir todo en una sola transacción
         self.score_repository.commit()
+
+        if self.audit_client and trace_id:
+            asyncio.create_task(
+                self.audit_client.send_calculation_event(
+                    trace_id=trace_id,
+                    estado="SUCCESS",
+                    summary=f"Construcción de score generada para el dataset {dataset_id}. {len(scored)} zonas analizadas."
+                )
+            )
 
         return {
             "execution_id": execution.id,
