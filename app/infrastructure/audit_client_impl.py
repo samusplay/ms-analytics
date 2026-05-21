@@ -31,11 +31,12 @@ class AuditClientImpl(AuditClientPort):
     async def send_calculation_event(self, trace_id: str, estado: str, summary: str) -> None:
         url = f"{AUDIT_API_URL}/api/v1/events"
         payload = {
-            "trace_id": trace_id,
+            "event_type": "SCORE_CALCULATED",
             "service_name": "ms-analytics",
-            "estado": estado,
-            "event_summary": summary,
-            "timestamp": datetime.utcnow().isoformat()
+            "reference_id": trace_id,
+            "trace_id": trace_id,
+            "status": estado,
+            "event_summary": summary
         }
         
         try:
