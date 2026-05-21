@@ -15,3 +15,8 @@ class AuditClientPort(ABC):
     async def send_calculation_event(self, trace_id: str, estado: str, summary: str) -> None:
         """Emite un evento de auditoría para un cálculo realizado."""
         pass
+
+    @abstractmethod
+    async def send_operation_event(self, status: str, summary: str) -> None:
+        """Emite un evento de auditoría específico para operaciones (cálculo, score, ranking)."""
+        pass

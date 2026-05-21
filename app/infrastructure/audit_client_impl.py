@@ -43,3 +43,18 @@ class AuditClientImpl(AuditClientPort):
                 await client.post(url, json=payload, timeout=5.0)
         except Exception as e:
             print(f"⚠️ Error enviando evento a auditoría (Cálculo): {e}")
+
+    async def send_operation_event(self, status: str, summary: str) -> None:
+        url = f"{AUDIT_API_URL}/audit/events"
+        payload = {
+            "service_name": "ms-analytics",
+            "execution_status": status,
+            "event_summary": summary,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(url, json=payload, timeout=5.0)
+        except Exception as e:
+            print(f"⚠️ Error enviando evento a auditoría (Operación): {e}")

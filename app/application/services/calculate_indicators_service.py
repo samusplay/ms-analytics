@@ -26,22 +26,31 @@ class CalculateIndicatorsService:
     async def execute(self, dataset_id: str, trace_id: str = None) -> Dict[str, Any]:
         """Ejecuta todos los cálculos y retorna el JSON final"""
         
-        data = await self.repository.get_territorial_data(dataset_id)
-        
-        if not data:
-            raise ValueError(f"No hay datos sincronizados para el dataset {dataset_id}")
+        try:
+            data = await self.repository.get_territorial_data(dataset_id)
+            
+            if not data:
+                raise ValueError(f"No hay datos sincronizados para el dataset {dataset_id}")
 
-        resultados = {}
-        for kpi_name, strategy in self.strategies.items():
-            resultados[kpi_name] = strategy.calculate(data)
-            
-        if self.audit_client and trace_id:
-            asyncio.create_task(
-                self.audit_client.send_calculation_event(
-                    trace_id=trace_id,
-                    estado="SUCCESS",
-                    summary=f"Cálculo de indicadores finalizado para el dataset {dataset_id}"
+            resultados = {}
+            for kpi_name, strategy in self.strategies.items():
+                resultados[kpi_name] = strategy.calculate(data)
+                
+            if self.audit_client:
+                asyncio.create_task(
+                    self.audit_client.send_operation_event(
+                        status="EXITOSO",
+                        summary=f"Cálculo de indicadores finalizado para el dataset {dataset_id}"
+                    )
                 )
-            )
-            
-        return resultados
+                
+            return resultados
+        except Exception as e:
+            if self.audit_client:
+                asyncio.create_task(
+                    self.audit_client.send_operation_event(
+                        status="FALLIDO",
+                        summary=f"Fallo en cálculo de indicadores para dataset {dataset_id}: {str(e)}"
+                    )
+                )
+            raise e
