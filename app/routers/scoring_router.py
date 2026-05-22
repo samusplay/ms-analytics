@@ -125,7 +125,7 @@ def get_trace(
 
 # CA1 ranking — último resultado por dataset
 @router.get("/ranking/{dataset_id}")
-def get_ranking(
+async def get_ranking(
     dataset_id: str, 
     db: Session = Depends(get_db),
     x_trace_id: str = Header(None, alias="X-Trace-Id"),

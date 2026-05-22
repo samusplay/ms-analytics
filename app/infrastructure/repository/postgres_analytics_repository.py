@@ -74,13 +74,14 @@ class PostgresAnalyticsRepository(IAnalyticsRepository):
                 seen.add(record.zone_code)
 
                 metrics = record.metrics or {}
+                extracted = self._extract_metrics(metrics)
 
                 result.append({
                     "zone_code": record.zone_code,
                     "zone_name": record.zone_name,
-                    "poblacion": float(metrics.get("poblacion", 0.0)),
-                    "ingresos": float(metrics.get("ingresos", 0.0)),
-                    "competencia": float(metrics.get("competencia", 0.0)),
+                    "poblacion": extracted["poblacion"],
+                    "ingresos": extracted["ingresos"],
+                    "competencia": extracted["competencia"],
                 })
 
             return result
@@ -88,6 +89,65 @@ class PostgresAnalyticsRepository(IAnalyticsRepository):
         except Exception as e:
             print(f"Error consultando métricas territoriales: {e}")
             return []
+
+    @staticmethod
+    def _extract_metrics(metrics: dict) -> dict:
+        """Extrae poblacion, ingresos y competencia de forma inteligente, 
+        buscando sinónimos cuando las claves exactas no existen."""
+        
+        # Intento directo con claves estándar
+        direct = {
+            "poblacion": metrics.get("poblacion", 0.0),
+            "ingresos": metrics.get("ingresos", metrics.get("ingreso", 0.0)),
+            "competencia": metrics.get("competencia", 0.0),
+        }
+        if any(float(v) > 0 for v in direct.values()):
+            return {k: float(v) for k, v in direct.items()}
+
+        # Búsqueda flexible por sinónimos
+        search_patterns = [
+            ("ingresos", ["INGRESOS", "GANANCIAS", "REVENUE", "VENTAS", "MONTO", "VALOR", "INGRESO"]),
+            ("poblacion", ["POBLACION", "HABITANTES", "PERSONAS", "CANTIDAD", "VIVIENDAS", "TOTAL", "TERMINADAS"]),
+            ("competencia", ["COMPETENCIA", "EMPRESAS", "RIVALES", "STORES", "NEGOCIOS"]),
+        ]
+
+        result = {"poblacion": 0.0, "ingresos": 0.0, "competencia": 0.0}
+        used_keys = set()
+
+        def clean_val(v):
+            s = str(v).replace('"', '').replace(" ", "").strip()
+            if "," in s and "." not in s: s = s.replace(",", "")
+            elif "." in s and "," in s: s = s.replace(".", "").replace(",", ".")
+            return float(s)
+
+        for metric_name, synonyms in search_patterns:
+            for syn in synonyms:
+                for k, v in metrics.items():
+                    if syn in str(k).upper() and k not in used_keys:
+                        try:
+                            result[metric_name] = clean_val(v)
+                            used_keys.add(k)
+                            break
+                        except:
+                            pass
+                if result[metric_name] > 0:
+                    break
+
+        # Rellenar con cualquier columna numérica sobrante
+        for k, v in metrics.items():
+            if k not in used_keys:
+                try:
+                    val = clean_val(v)
+                    if val > 0 and 1900 <= val <= 2100:
+                        continue  # ignorar años
+                    if result["ingresos"] == 0.0: result["ingresos"] = val
+                    elif result["poblacion"] == 0.0: result["poblacion"] = val
+                    elif result["competencia"] == 0.0: result["competencia"] = val
+                    used_keys.add(k)
+                except:
+                    pass
+
+        return result
 #Metodo para devolver zonas y pesos del csv provenientes de ms-transform
     def get_results_with_names(self, execution_id: int) -> List[Dict[str, Any]]:
         zone_scores = (

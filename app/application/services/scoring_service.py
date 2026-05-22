@@ -41,11 +41,40 @@ class ScoringService:
         scored = []
         for zone in normalized:
             zone_code = zone.get("zone_code", "UNKNOWN")
-            norm_values = {
-                "poblacion": float(zone.get("poblacion", 0) or 0),
-                "ingresos": float(zone.get("ingresos", 0) or 0),
-                "competencia": float(zone.get("competencia", 0) or 0),
-            }
+            
+            # --- NUEVO: Extracción inteligente de métricas ---
+            # Buscar en todo el dict de la zona para extraer las variables necesarias.
+            norm_values = {"poblacion": 0.0, "ingresos": 0.0, "competencia": 0.0}
+            used_keys = set()
+            
+            # 1. Búsqueda por sinónimos
+            search_patterns = [
+                ("ingresos", ["INGRESOS", "GANANCIAS", "REVENUE", "VENTAS", "MONTO", "VALOR"]),
+                ("poblacion", ["POBLACION", "HABITANTES", "PERSONAS", "CANTIDAD", "VIVIENDAS", "TOTAL", "TERMINADAS"]),
+                ("competencia", ["COMPETENCIA", "EMPRESAS", "RIVALES", "STORES", "NEGOCIOS"])
+            ]
+            
+            for metric_name, synonyms in search_patterns:
+                for s in synonyms:
+                    for k, v in zone.items():
+                        if k not in ["zone_code", "zone_name"] and s in str(k).upper() and k not in used_keys:
+                            try:
+                                norm_values[metric_name] = float(v)
+                                used_keys.add(k)
+                                break
+                            except: pass
+                    if norm_values[metric_name] > 0: break
+            
+            # 2. Si no encontró sinónimos, usar cualquier valor numérico sobrante
+            for k, v in zone.items():
+                if k not in ["zone_code", "zone_name"] and k not in used_keys:
+                    try:
+                        val = float(v)
+                        if norm_values["ingresos"] == 0.0: norm_values["ingresos"] = val
+                        elif norm_values["poblacion"] == 0.0: norm_values["poblacion"] = val
+                        elif norm_values["competencia"] == 0.0: norm_values["competencia"] = val
+                        used_keys.add(k)
+                    except: pass
             score = self.calculator.calculate(norm_values, weights)
             scored.append({
                 "zone_code": zone_code,
@@ -112,19 +141,26 @@ class ScoringService:
         }
 
     def _normalize(self, data: List[Dict]) -> List[Dict]:
-        """Min-Max normalization para poblacion, ingresos, competencia"""
+        """Min-Max normalization para todas las variables numéricas encontradas"""
         if not data:
             return []
 
-        numeric_keys = ["poblacion", "ingresos", "competencia"]
+        # Detectar todas las claves numéricas posibles
+        numeric_keys = set()
+        for row in data:
+            for k, v in row.items():
+                if k not in ["zone_code", "zone_name", "id"]:
+                    try:
+                        float(v)
+                        numeric_keys.add(k)
+                    except: pass
+                    
         min_max = {}
-
         for key in numeric_keys:
-            values = [
-                float(row[key])
-                for row in data
-                if row.get(key) is not None
-            ]
+            values = []
+            for row in data:
+                try: values.append(float(row.get(key, 0) or 0))
+                except: pass
             if values:
                 min_max[key] = {"min": min(values), "max": max(values)}
 
@@ -135,11 +171,13 @@ class ScoringService:
                 if key in min_max:
                     mn = min_max[key]["min"]
                     mx = min_max[key]["max"]
-                    val = float(row.get(key, 0) or 0)
-                    norm_row[key] = (
-                        0.0 if mx == mn
-                        else round((val - mn) / (mx - mn), 4)
-                    )
+                    try:
+                        val = float(row.get(key, 0) or 0)
+                        norm_row[key] = (
+                            0.0 if mx == mn
+                            else round((val - mn) / (mx - mn), 4)
+                        )
+                    except: pass
             normalized.append(norm_row)
 
         return normalized
