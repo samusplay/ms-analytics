@@ -1,9 +1,11 @@
+import logging
 import os
 import httpx
 from datetime import datetime
 
 from app.domain.repository.audit_client_port import AuditClientPort
 
+logger = logging.getLogger(__name__)
 AUDIT_API_URL = os.getenv("MS_AUDITORIA_URL", "http://ms-auditoria:8000")
 
 class AuditClientImpl(AuditClientPort):
@@ -26,7 +28,17 @@ class AuditClientImpl(AuditClientPort):
             async with httpx.AsyncClient() as client:
                 await client.post(url, json=payload, timeout=5.0)
         except Exception as e:
-            print(f"⚠️ Error enviando evento a auditoría: {e}")
+            # DEGRADACIÓN CONTROLADA (CA-5):
+            # Si ms-auditoria falla por latencia o caída temporal,
+            # capturamos la excepción para no interrumpir el flujo
+            # principal. El error queda registrado en logs internos
+            # para seguimiento, pero no afecta la respuesta al usuario.
+            logger.warning(
+                f"[AUDIT-FAIL] {datetime.now()} | "
+                f"event_type: {payload.get('event_type', 'UNKNOWN')} | "
+                f"service: {payload.get('service_name', payload.get('source_service', 'UNKNOWN'))} | "
+                f"causa: {str(e)}"
+            )
 
     async def send_calculation_event(self, trace_id: str, estado: str, summary: str) -> None:
         url = f"{AUDIT_API_URL}/api/v1/events"
@@ -42,7 +54,17 @@ class AuditClientImpl(AuditClientPort):
             async with httpx.AsyncClient() as client:
                 await client.post(url, json=payload, timeout=5.0)
         except Exception as e:
-            print(f"⚠️ Error enviando evento a auditoría (Cálculo): {e}")
+            # DEGRADACIÓN CONTROLADA (CA-5):
+            # Si ms-auditoria falla por latencia o caída temporal,
+            # capturamos la excepción para no interrumpir el flujo
+            # principal. El error queda registrado en logs internos
+            # para seguimiento, pero no afecta la respuesta al usuario.
+            logger.warning(
+                f"[AUDIT-FAIL] {datetime.now()} | "
+                f"event_type: {payload.get('event_type', 'UNKNOWN')} | "
+                f"service: {payload.get('service_name', payload.get('source_service', 'UNKNOWN'))} | "
+                f"causa: {str(e)}"
+            )
 
     async def send_operation_event(self, status: str, summary: str) -> None:
         url = f"{AUDIT_API_URL}/audit/events"
@@ -57,4 +79,14 @@ class AuditClientImpl(AuditClientPort):
             async with httpx.AsyncClient() as client:
                 await client.post(url, json=payload, timeout=5.0)
         except Exception as e:
-            print(f"⚠️ Error enviando evento a auditoría (Operación): {e}")
+            # DEGRADACIÓN CONTROLADA (CA-5):
+            # Si ms-auditoria falla por latencia o caída temporal,
+            # capturamos la excepción para no interrumpir el flujo
+            # principal. El error queda registrado en logs internos
+            # para seguimiento, pero no afecta la respuesta al usuario.
+            logger.warning(
+                f"[AUDIT-FAIL] {datetime.now()} | "
+                f"event_type: {payload.get('event_type', 'UNKNOWN')} | "
+                f"service: {payload.get('service_name', payload.get('source_service', 'UNKNOWN'))} | "
+                f"causa: {str(e)}"
+            )
